@@ -2,7 +2,7 @@
  * lmms_math.h - defines math functions
  *
  * Copyright (c) 2004-2008 Tobias Doerffel <tobydox/at/users.sourceforge.net>
- * 
+ *
  * This file is part of LMMS - https://lmms.io
  *
  * This program is free software; you can redistribute it and/or
@@ -29,21 +29,24 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <concepts>
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <numbers>
 
 #include "lmms_constants.h"
 #include "lmmsconfig.h"
 
-namespace lmms
-{
+namespace lmms {
 
-inline bool approximatelyEqual(float x, float y)
+// TODO C++23: Make constexpr since std::abs() will be constexpr
+inline bool approximatelyEqual(float x, float y) noexcept
 {
-	return x == y ? true : std::abs(x - y) < F_EPSILON;
+	return x == y || std::abs(x - y) < F_EPSILON;
 }
 
+// TODO C++23: Make constexpr since std::trunc() will be constexpr
 /*!
  * @brief Returns the fractional part of a float, a value between -1.0f and 1.0f.
  *
@@ -53,11 +56,12 @@ inline bool approximatelyEqual(float x, float y)
  * Note that if the return value is used as a phase of an oscillator, that the oscillator must support
  * negative phases.
  */
-inline float fraction(const float x)
+inline auto fraction(std::floating_point auto x) noexcept
 {
 	return x - std::trunc(x);
 }
 
+// TODO C++23: Make constexpr since std::floor() will be constexpr
 /*!
  * @brief Returns the wrapped fractional part of a float, a value between 0.0f and 1.0f.
  *
@@ -68,34 +72,33 @@ inline float fraction(const float x)
  * If the result is interpreted as a phase of an oscillator, it makes that negative phases are
  * converted to positive phases.
  */
-inline float absFraction(const float x)
+inline auto absFraction(std::floating_point auto x) noexcept
 {
 	return x - std::floor(x);
 }
 
-
-constexpr float FAST_RAND_RATIO = 1.0f / 32767;
-inline int fast_rand()
+inline auto fastRand() noexcept
 {
 	static unsigned long next = 1;
 	next = next * 1103515245 + 12345;
-	return( (unsigned)( next / 65536 ) % 32768 );
+	return next / 65536 % 32768;
 }
 
-inline float fastRandf(float range)
+template <std::floating_point T> inline auto fastRand(T range) noexcept
 {
-	return fast_rand() * range * FAST_RAND_RATIO;
+	constexpr T FAST_RAND_RATIO = static_cast<T>(1.0 / 32767);
+	return fastRand() * range * FAST_RAND_RATIO;
 }
 
+template <std::floating_point T> inline auto fastRand(T from, T to) noexcept
+{
+	return from + fastRand(to - from);
+}
 
 //! Round `value` to `where` depending on step size
-template<class T>
-static void roundAt(T& value, const T& where, const T& stepSize)
+template <class T> static void roundAt(T& value, const T& where, const T& stepSize)
 {
-	if (std::abs(value - where) < F_EPSILON * std::abs(stepSize))
-	{
-		value = where;
-	}
+	if (std::abs(value - where) < F_EPSILON * std::abs(stepSize)) { value = where; }
 }
 
 //! Source: http://martin.ankerl.com/2007/10/04/optimized-pow-approximation-for-java-and-c-c/
@@ -112,16 +115,14 @@ inline double fastPow(double a, double b)
 	return d;
 }
 
-
-//! returns 1.0f if val >= 0.0f, -1.0 else
-inline float sign(float val) 
-{ 
-	return val >= 0.0f ? 1.0f : -1.0f; 
+//! returns +1 if val >= 0, else -1
+template <typename T> constexpr T sign(T val) noexcept
+{
+	return val >= 0 ? 1 : -1;
 }
 
-
-//! if val >= 0.0f, returns sqrtf(val), else: -sqrtf(-val)
-inline float sqrt_neg(float val) 
+//! if val >= 0.0f, returns sqrt(val), else: -sqrt(-val)
+inline float sqrt_neg(float val)
 {
 	return std::sqrt(std::abs(val)) * sign(val);
 }
@@ -132,57 +133,64 @@ inline float signedPowf(float v, float e)
 	return std::pow(std::abs(v), e) * sign(v);
 }
 
-
 //! @brief Scales @value from linear to logarithmic.
 //! Value should be within [0,1]
 inline float logToLinearScale(float min, float max, float value)
 {
-	if( min < 0 )
+	using namespace std::numbers;
+	if (min < 0)
 	{
 		const float mmax = std::max(std::abs(min), std::abs(max));
-		const float val = value * ( max - min ) + min;
-		float result = signedPowf( val / mmax, F_E ) * mmax;
-		return std::isnan( result ) ? 0 : result;
+		const float val = value * (max - min) + min;
+		float result = signedPowf(val / mmax, e_v<float>) * mmax;
+		return std::isnan(result) ? 0 : result;
 	}
-	float result = powf( value, F_E ) * ( max - min ) + min;
-	return std::isnan( result ) ? 0 : result;
+	float result = std::pow(value, e_v<float>) * (max - min) + min;
+	return std::isnan(result) ? 0 : result;
 }
-
 
 //! @brief Scales value from logarithmic to linear. Value should be in min-max range.
 inline float linearToLogScale(float min, float max, float value)
 {
-	static const float EXP = 1.0f / F_E;
+	constexpr auto inv_e = static_cast<float>(1.0 / std::numbers::e);
 	const float valueLimited = std::clamp(value, min, max);
-	const float val = ( valueLimited - min ) / ( max - min );
-	if( min < 0 )
+	const float val = (valueLimited - min) / (max - min);
+	if (min < 0)
 	{
 		const float mmax = std::max(std::abs(min), std::abs(max));
-		float result = signedPowf( valueLimited / mmax, EXP ) * mmax;
-		return std::isnan( result ) ? 0 : result;
+		float result = signedPowf(valueLimited / mmax, inv_e) * mmax;
+		return std::isnan(result) ? 0 : result;
 	}
-	float result = powf( val, EXP ) * ( max - min ) + min;
-	return std::isnan( result ) ? 0 : result;
+	float result = std::pow(val, inv_e) * (max - min) + min;
+	return std::isnan(result) ? 0 : result;
 }
 
-inline float fastPow10f(float x)
+// TODO C++26: Make constexpr since std::exp() will be constexpr
+template <std::floating_point T> inline auto fastPow10f(T x)
 {
-	return std::exp(2.302585092994046f * x);
+	return std::exp(std::numbers::ln10_v<T> * x);
 }
 
-inline float fastLog10f(float x)
+// TODO C++26: Make constexpr since std::exp() will be constexpr
+inline auto fastPow10f(std::integral auto x)
 {
-	return std::log(x) * 0.4342944819032518f;
+	return std::exp(std::numbers::ln10_v<float> * x);
 }
 
-//! @brief Converts linear amplitude (>0-1.0) to dBFS scale. 
+// TODO C++26: Make constexpr since std::log() will be constexpr
+inline auto fastLog10f(float x)
+{
+	constexpr auto inv_ln10 = static_cast<float>(1.0 / std::numbers::ln10);
+	return std::log(x) * inv_ln10;
+}
+
+//! @brief Converts linear amplitude (>0-1.0) to dBFS scale.
 //! @param amp Linear amplitude, where 1.0 = 0dBFS. ** Must be larger than zero! **
-//! @return Amplitude in dBFS. 
+//! @return Amplitude in dBFS.
 inline float ampToDbfs(float amp)
 {
 	return fastLog10f(amp) * 20.0f;
 }
-
 
 //! @brief Converts dBFS-scale to linear amplitude with 0dBFS = 1.0
 //! @param dbfs The dBFS value to convert. ** Must be a real number - not inf/nan! **
@@ -192,15 +200,13 @@ inline float dbfsToAmp(float dbfs)
 	return fastPow10f(dbfs * 0.05f);
 }
 
-
 //! @brief Converts linear amplitude (0-1.0) to dBFS scale. Handles zeroes as -inf.
-//! @param amp Linear amplitude, where 1.0 = 0dBFS. 
+//! @param amp Linear amplitude, where 1.0 = 0dBFS.
 //! @return Amplitude in dBFS. -inf for 0 amplitude.
 inline float safeAmpToDbfs(float amp)
 {
 	return amp == 0.0f ? -INFINITY : ampToDbfs(amp);
 }
-
 
 //! @brief Converts dBFS-scale to linear amplitude with 0dBFS = 1.0. Handles infinity as zero.
 //! @param dbfs The dBFS value to convert: all infinites are treated as -inf and result in 0
@@ -210,17 +216,8 @@ inline float safeDbfsToAmp(float dbfs)
 	return std::isinf(dbfs) ? 0.0f : dbfsToAmp(dbfs);
 }
 
-
-
-//! Returns the linear interpolation of the two values
-template<class T, class F>
-constexpr T lerp(T a, T b, F t)
-{
-	return (1. - t) * a + t * b;
-}
-
+// TODO C++20: use std::formatted_size
 // @brief Calculate number of digits which LcdSpinBox would show for a given number
-// @note Once we upgrade to C++20, we could probably use std::formatted_size
 inline int numDigitsAsInt(float f)
 {
 	// use rounding:
@@ -228,7 +225,7 @@ inline int numDigitsAsInt(float f)
 	// we use rounding to be on the "safe side"
 	int asInt = static_cast<int>(std::round(f));
 	int digits = 1; // always at least 1
-	if(asInt < 0)
+	if (asInt < 0)
 	{
 		++digits;
 		asInt = -asInt;
@@ -244,32 +241,25 @@ inline int numDigitsAsInt(float f)
 	return digits;
 }
 
-
 //! Taken from N3876 / boost::hash_combine
-template<typename T>
-inline void hashCombine(std::size_t& seed, const T& val) noexcept
+template <typename T> inline void hashCombine(std::size_t& seed, const T& val) noexcept
 {
 	seed ^= std::hash<T>{}(val) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
-
-template <typename T>
-class LinearMap
+template <typename T> class LinearMap
 {
 public:
 	LinearMap(T x1, T y1, T x2, T y2)
 	{
 		T const dx = x2 - x1;
-		assert (dx != T(0));
+		assert(dx != T(0));
 
 		m_a = (y2 - y1) / dx;
 		m_b = y1 - m_a * x1;
 	}
 
-	T map(T x) const
-	{
-		return m_a * x + m_b;
-	}
+	T map(T x) const { return m_a * x + m_b; }
 
 private:
 	T m_a;
