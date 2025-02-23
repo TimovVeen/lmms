@@ -149,7 +149,7 @@ auto PresetDatabase::getLocation(std::string_view path, bool add) -> PresetMap::
 	if (!add) { return m_presets.end(); }
 
 	// Use parent directory
-	const auto parentPath = std::filesystem::u8path(PathUtil::toAbsolute(path).value()).parent_path().u8string();
+	const auto parentPath = std::filesystem::path(PathUtil::toAbsolute(path).value()).parent_path().string();
 	auto newLocation = Location{
 		std::string{},										   // name
 		std::string{PathUtil::toShortestRelative(parentPath)}, // directory
