@@ -3,12 +3,10 @@
 # Halt on first error
 set -e
 
-DESTDIR="/opt/@CPACK_PROJECT_NAME@"
-BASHCOMPLETIONS="/usr/share/bash-completion/completions"
+BASHCOMPLETIONS="${DESTDIR}/usr/share/bash-completion/completions"
 if [ "$(id -u)" != "0" ]; then
 	# Prepend "$HOME" so we can install to a writable location
-	DESTDIR="${HOME}${DESTDIR}"
-	BASHCOMPLETIONS="${HOME}/.local/share/bash-completion/completions"
+	BASHCOMPLETIONS="${DESTDIR}${HOME}/.local/share/bash-completion/completions"
 	echo "Installing as a regular user to ${DESTDIR}/..."
 else
 	echo "Installing as elevated user to ${DESTDIR}/..."
