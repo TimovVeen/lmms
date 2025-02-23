@@ -31,8 +31,7 @@
 #include "ConfigManager.h"
 #include "PathUtil.h"
 
-namespace lmms
-{
+namespace lmms {
 
 PresetDatabase::PresetDatabase()
 	: m_recentPresetFile{ConfigManager::inst()->userPresetsDir().toStdString()}
@@ -70,14 +69,14 @@ auto PresetDatabase::loadPresets(const Location& location, std::string_view file
 	// This is the default method - plugins should override this
 
 	auto preset = Preset{};
-	preset.loadData() = { std::string{file}, "" };
+	preset.loadData() = {std::string{file}, ""};
 
-	preset.metadata().displayName = std::filesystem::u8path(file).filename().u8string();
+	preset.metadata().displayName = std::filesystem::path(file).filename().string();
 
 	auto [it, added] = presets.emplace(std::move(preset));
 	if (!added) { return {}; }
 
-	return { &*it };
+	return {&*it};
 }
 
 auto PresetDatabase::findPresets(std::string_view key) const -> std::vector<const Preset*>
@@ -87,10 +86,7 @@ auto PresetDatabase::findPresets(std::string_view key) const -> std::vector<cons
 	{
 		for (const auto& preset : mapPair.second)
 		{
-			if (preset.supportsPlugin(key))
-			{
-				ret.push_back(&preset);
-			}
+			if (preset.supportsPlugin(key)) { ret.push_back(&preset); }
 		}
 	}
 	return ret;
@@ -100,9 +96,8 @@ auto PresetDatabase::findPreset(const PresetLoadData& loadData, std::string_view
 {
 	if (auto it = m_presets.find(loadData.location); it != m_presets.end())
 	{
-		auto it2 = std::find_if(it->second.begin(), it->second.end(), [&](const Preset& p) {
-			return p.loadData().loadKey == loadData.loadKey && p.supportsPlugin(key);
-		});
+		auto it2 = std::find_if(it->second.begin(), it->second.end(),
+			[&](const Preset& p) { return p.loadData().loadKey == loadData.loadKey && p.supportsPlugin(key); });
 		return it2 != it->second.end() ? &*it2 : nullptr; // TODO: Is it2.base() standard?
 	}
 	return nullptr;
@@ -139,19 +134,15 @@ auto PresetDatabase::getLocation(std::string_view path, bool add) -> PresetMap::
 	for (auto it = m_presets.begin(); it != m_presets.end(); ++it)
 	{
 		const auto& location = it->first.location;
-		if (isSubpath(shortPath, location))
-		{
-			matches.push_back(it);
-		}
+		if (isSubpath(shortPath, location)) { matches.push_back(it); }
 	}
 
 	if (!matches.empty())
 	{
 		// Location already exists - return the longest (most specific) directory
-		return *std::max_element(matches.begin(), matches.end(),
-			[](PresetMap::iterator a, PresetMap::iterator b) {
-				return a->first.location.size() < b->first.location.size();
-			});
+		return *std::max_element(matches.begin(), matches.end(), [](PresetMap::iterator a, PresetMap::iterator b) {
+			return a->first.location.size() < b->first.location.size();
+		});
 	}
 
 	// Else, need to add new location
@@ -159,10 +150,10 @@ auto PresetDatabase::getLocation(std::string_view path, bool add) -> PresetMap::
 
 	// Use parent directory
 	const auto parentPath = std::filesystem::u8path(PathUtil::toAbsolute(path).value()).parent_path().u8string();
-	auto newLocation = Location {
-		std::string{}, // name
+	auto newLocation = Location{
+		std::string{},										   // name
 		std::string{PathUtil::toShortestRelative(parentPath)}, // directory
-		PresetMetadata::Flag::UserContent // assume unknown directories are user content
+		PresetMetadata::Flag::UserContent					   // assume unknown directories are user content
 	};
 
 	return m_presets.emplace(std::move(newLocation), std::set<Preset>{}).first;
