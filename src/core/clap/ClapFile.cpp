@@ -29,8 +29,7 @@
 #include "ClapLog.h"
 #include "ClapManager.h"
 
-namespace lmms
-{
+namespace lmms {
 
 ClapFile::ClapFile(std::filesystem::path filename)
 	: m_filename{std::move(filename.make_preferred())}
@@ -48,7 +47,7 @@ auto ClapFile::load() -> bool
 	if (m_library && m_library->isLoaded()) { return false; }
 
 	// TODO: Replace QLibrary with in-house non-Qt alternative
-	const auto file = filename().u8string();
+	const auto file = filename().string();
 	m_library = std::make_unique<QLibrary>(QString::fromUtf8(file.c_str(), file.size()));
 	if (!m_library->load())
 	{
@@ -92,10 +91,7 @@ auto ClapFile::load() -> bool
 	m_pluginInfo.clear();
 	for (std::uint32_t idx = 0; idx < m_pluginCount; ++idx)
 	{
-		if (auto plugin = ClapPluginInfo::create(*m_factory, idx))
-		{
-			m_pluginInfo.emplace_back(std::move(plugin));
-		}
+		if (auto plugin = ClapPluginInfo::create(*m_factory, idx)) { m_pluginInfo.emplace_back(std::move(plugin)); }
 	}
 
 	m_presetDatabase = std::make_unique<ClapPresetDatabase>();

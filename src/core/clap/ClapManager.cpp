@@ -37,27 +37,25 @@
 #include "ClapTransport.h"
 #include "lmmsversion.h"
 
-namespace lmms
-{
+namespace lmms {
 
-namespace
+namespace {
+auto expandHomeDir(std::string_view dir) -> std::filesystem::path
 {
-	auto expandHomeDir(std::string_view dir) -> std::filesystem::path
-	{
 #if defined(LMMS_BUILD_LINUX) || defined(LMMS_BUILD_APPLE)
-		if (!dir.empty() && dir[0] == '~')
+	if (!dir.empty() && dir[0] == '~')
+	{
+		if (auto home = std::getenv("HOME"))
 		{
-			if (auto home = std::getenv("HOME"))
-			{
-				const auto pos = dir.find_first_not_of(R"(/\)", 1);
-				if (pos == std::string_view::npos) { return home; }
-				dir.remove_prefix(pos);
-				return std::filesystem::u8path(home) / dir;
-			}
+			const auto pos = dir.find_first_not_of(R"(/\)", 1);
+			if (pos == std::string_view::npos) { return home; }
+			dir.remove_prefix(pos);
+			return std::filesystem::path(home) / dir;
 		}
-#endif
-		return std::filesystem::u8path(dir);
 	}
+#endif
+	return std::filesystem::path(dir);
+}
 } // namespace
 
 ClapManager::ClapManager()
@@ -134,10 +132,7 @@ void ClapManager::findSearchPaths()
 	}
 
 	// Get CLAP_PATH paths
-	if (auto paths = _wgetenv(L"CLAP_PATH"))
-	{
-		parsePaths(toUtf8(paths).c_str());
-	}
+	if (auto paths = _wgetenv(L"CLAP_PATH")) { parsePaths(toUtf8(paths).c_str()); }
 #else
 	// Use LMMS_CLAP_PATH to override all of CLAP's default search paths
 	if (auto paths = std::getenv("LMMS_CLAP_PATH"))
@@ -156,15 +151,9 @@ void ClapManager::findSearchPaths()
 	// /usr/lib/clap
 	std::error_code ec;
 	auto path = expandHomeDir("~/.clap");
-	if (std::filesystem::is_directory(path, ec))
-	{
-		m_searchPaths.emplace(std::move(path));
-	}
+	if (std::filesystem::is_directory(path, ec)) { m_searchPaths.emplace(std::move(path)); }
 	path = "/usr/lib/clap";
-	if (std::filesystem::is_directory(path, ec))
-	{
-		m_searchPaths.emplace(std::move(path));
-	}
+	if (std::filesystem::is_directory(path, ec)) { m_searchPaths.emplace(std::move(path)); }
 #elif defined(LMMS_BUILD_WIN32) || defined(LMMS_BUILD_WIN64)
 	// %COMMONPROGRAMFILES%\CLAP
 	// %LOCALAPPDATA%\Programs\Common\CLAP
@@ -172,33 +161,21 @@ void ClapManager::findSearchPaths()
 	if (auto commonProgFiles = _wgetenv(L"COMMONPROGRAMFILES")) // TODO: Use wstring
 	{
 		auto path = std::filesystem::path{commonProgFiles} / "CLAP";
-		if (std::filesystem::is_directory(path, ec))
-		{
-			m_searchPaths.emplace(std::move(path.make_preferred()));
-		}
+		if (std::filesystem::is_directory(path, ec)) { m_searchPaths.emplace(std::move(path.make_preferred())); }
 	}
 	if (auto localAppData = _wgetenv(L"LOCALAPPDATA"))
 	{
 		auto path = std::filesystem::path{localAppData} / "Programs/Common/CLAP";
-		if (std::filesystem::is_directory(path, ec))
-		{
-			m_searchPaths.emplace(std::move(path.make_preferred()));
-		}
+		if (std::filesystem::is_directory(path, ec)) { m_searchPaths.emplace(std::move(path.make_preferred())); }
 	}
 #elif defined(LMMS_BUILD_APPLE)
 	// /Library/Audio/Plug-Ins/CLAP
 	// ~/Library/Audio/Plug-Ins/CLAP
 	std::error_code ec;
 	auto path = std::filesystem::path{"/Library/Audio/Plug-Ins/CLAP"};
-	if (std::filesystem::is_directory(path, ec))
-	{
-		m_searchPaths.emplace(std::move(path));
-	}
+	if (std::filesystem::is_directory(path, ec)) { m_searchPaths.emplace(std::move(path)); }
 	path = expandHomeDir("~/Library/Audio/Plug-Ins/CLAP");
-	if (std::filesystem::is_directory(path, ec))
-	{
-		m_searchPaths.emplace(std::move(path));
-	}
+	if (std::filesystem::is_directory(path, ec)) { m_searchPaths.emplace(std::move(path)); }
 #endif
 }
 
@@ -234,7 +211,7 @@ void ClapManager::loadClapFiles(const UniquePaths& searchPaths)
 			if (debugging())
 			{
 				std::string msg = "\n\n~~~CLAP FILE~~~\nfilename: ";
-				msg += entryPath.u8string();
+				msg += entryPath.string();
 				ClapLog::plainLog(msg);
 			}
 
@@ -242,7 +219,7 @@ void ClapManager::loadClapFiles(const UniquePaths& searchPaths)
 			if (!file.load())
 			{
 				std::string msg = "Failed to load '";
-				msg += file.filename().u8string();
+				msg += file.filename().string();
 				msg += "'";
 				ClapLog::globalLog(CLAP_LOG_ERROR, msg);
 				m_files.pop_back(); // Remove/unload invalid clap file
@@ -278,16 +255,13 @@ void ClapManager::loadClapFiles(const UniquePaths& searchPaths)
 				loadedFromThisFile = true;
 			}
 
-			if (loadedFromThisFile && file.presetDatabase())
-			{
-				file.presetDatabase()->discover();
-			}
+			if (loadedFromThisFile && file.presetDatabase()) { file.presetDatabase()->discover(); }
 		}
 	}
 
 	{
-		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-			std::chrono::steady_clock::now() - startTime);
+		const auto elapsed
+			= std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime);
 		std::string msg = "CLAP plugin SUMMARY: ";
 		msg += std::to_string(m_pluginInfo.size()) + " out of " + std::to_string(totalPlugins);
 		msg += " plugins in " + std::to_string(m_files.size()) + " out of " + std::to_string(totalClapFiles);
@@ -297,15 +271,14 @@ void ClapManager::loadClapFiles(const UniquePaths& searchPaths)
 
 	if (debugging())
 	{
-		ClapLog::plainLog(
-			"If you don't want to see all this debug output, please set\n"
-			"  environment variable \"LMMS_CLAP_DEBUG\" to empty or\n"
-			"  do not set it.");
+		ClapLog::plainLog("If you don't want to see all this debug output, please set\n"
+						  "  environment variable \"LMMS_CLAP_DEBUG\" to empty or\n"
+						  "  do not set it.");
 	}
 	else if (m_files.size() != totalClapFiles || m_pluginInfo.size() != totalPlugins)
 	{
 		ClapLog::plainLog("For details about not loaded plugins, please set\n"
-			"  environment variable \"LMMS_CLAP_DEBUG\" to nonempty.");
+						  "  environment variable \"LMMS_CLAP_DEBUG\" to nonempty.");
 	}
 }
 

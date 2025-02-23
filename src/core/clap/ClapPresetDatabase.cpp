@@ -28,27 +28,25 @@
 
 #include <QObject>
 #include <cassert>
-#include <filesystem>
 #include <clap/entry.h>
+#include <filesystem>
 
 #include "ClapLog.h"
-#include "lmmsversion.h"
 #include "PathUtil.h"
+#include "lmmsversion.h"
 
-namespace lmms
-{
+namespace lmms {
 
-namespace
+namespace {
+//! Converts clap_preset_discovery_flags to PresetMetadata::Flags
+auto convertFlags(std::uint32_t flags) -> PresetMetadata::Flags
 {
-	//! Converts clap_preset_discovery_flags to PresetMetadata::Flags
-	auto convertFlags(std::uint32_t flags) -> PresetMetadata::Flags
-	{
-		PresetMetadata::Flags result = PresetMetadata::Flag::None;
-		if (flags & CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT) { result |= PresetMetadata::Flag::FactoryContent; }
-		if (flags & CLAP_PRESET_DISCOVERY_IS_USER_CONTENT) { result |= PresetMetadata::Flag::UserContent; }
-		if (flags & CLAP_PRESET_DISCOVERY_IS_FAVORITE) { result |= PresetMetadata::Flag::UserFavorite; }
-		return result;
-	}
+	PresetMetadata::Flags result = PresetMetadata::Flag::None;
+	if (flags & CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT) { result |= PresetMetadata::Flag::FactoryContent; }
+	if (flags & CLAP_PRESET_DISCOVERY_IS_USER_CONTENT) { result |= PresetMetadata::Flag::UserContent; }
+	if (flags & CLAP_PRESET_DISCOVERY_IS_FAVORITE) { result |= PresetMetadata::Flag::UserFavorite; }
+	return result;
+}
 } // namespace
 
 class ClapPresetDatabase::MetadataReceiver
@@ -58,12 +56,11 @@ public:
 	MetadataReceiver(const Indexer& indexer);
 
 	//! For PLUGIN presets
-	auto query(PresetMetadata::Flags flags = PresetMetadata::Flag::None)
-		-> std::optional<std::vector<Preset>>;
+	auto query(PresetMetadata::Flags flags = PresetMetadata::Flag::None) -> std::optional<std::vector<Preset>>;
 
 	//! For FILE presets; `file` is the full path of the preset file
-	auto query(std::string_view file,
-		PresetMetadata::Flags flags = PresetMetadata::Flag::None) -> std::optional<std::vector<Preset>>;
+	auto query(std::string_view file, PresetMetadata::Flags flags = PresetMetadata::Flag::None)
+		-> std::optional<std::vector<Preset>>;
 
 	auto errorMessage() const -> auto& { return m_error; }
 
@@ -71,24 +68,21 @@ private:
 	/**
 	 * clap_preset_discovery_metadata_receiver implementation
 	 */
-	static void clapOnError(const clap_preset_discovery_metadata_receiver* receiver,
-		std::int32_t osError, const char* errorMessage);
-	static auto clapBeginPreset(const clap_preset_discovery_metadata_receiver* receiver,
-		const char* name, const char* loadKey) -> bool;
-	static void clapAddPluginId(const clap_preset_discovery_metadata_receiver* receiver,
-		const clap_universal_plugin_id* pluginId);
-	static void clapSetSoundpackId(const clap_preset_discovery_metadata_receiver* receiver,
-		const char* soundpackId);
+	static void clapOnError(
+		const clap_preset_discovery_metadata_receiver* receiver, std::int32_t osError, const char* errorMessage);
+	static auto clapBeginPreset(
+		const clap_preset_discovery_metadata_receiver* receiver, const char* name, const char* loadKey) -> bool;
+	static void clapAddPluginId(
+		const clap_preset_discovery_metadata_receiver* receiver, const clap_universal_plugin_id* pluginId);
+	static void clapSetSoundpackId(const clap_preset_discovery_metadata_receiver* receiver, const char* soundpackId);
 	static void clapSetFlags(const clap_preset_discovery_metadata_receiver* receiver, std::uint32_t flags);
 	static void clapAddCreator(const clap_preset_discovery_metadata_receiver* receiver, const char* creator);
-	static void clapSetDescription(const clap_preset_discovery_metadata_receiver* receiver,
-		const char* description);
-	static void clapSetTimestamps(const clap_preset_discovery_metadata_receiver* receiver,
-		clap_timestamp creationTime, clap_timestamp modificationTime);
-	static void clapAddFeature(const clap_preset_discovery_metadata_receiver* receiver,
-		const char* feature);
-	static void clapAddExtraInfo(const clap_preset_discovery_metadata_receiver* receiver,
-		const char* key, const char* value);
+	static void clapSetDescription(const clap_preset_discovery_metadata_receiver* receiver, const char* description);
+	static void clapSetTimestamps(const clap_preset_discovery_metadata_receiver* receiver, clap_timestamp creationTime,
+		clap_timestamp modificationTime);
+	static void clapAddFeature(const clap_preset_discovery_metadata_receiver* receiver, const char* feature);
+	static void clapAddExtraInfo(
+		const clap_preset_discovery_metadata_receiver* receiver, const char* key, const char* value);
 
 	static auto from(const clap_preset_discovery_metadata_receiver* receiver) -> MetadataReceiver*;
 
@@ -108,8 +102,7 @@ auto ClapPresetDatabase::init(const clap_plugin_entry* entry) -> bool
 {
 	if (!entry) { return false; }
 
-	m_factory = static_cast<const clap_preset_discovery_factory*>(
-		entry->get_factory(CLAP_PRESET_DISCOVERY_FACTORY_ID));
+	m_factory = static_cast<const clap_preset_discovery_factory*>(entry->get_factory(CLAP_PRESET_DISCOVERY_FACTORY_ID));
 
 	if (!m_factory)
 	{
@@ -149,10 +142,7 @@ auto ClapPresetDatabase::discoverSetup() -> bool
 				m_filetypeIndexerMap[filetype.extension].push_back(indexerRef.get());
 			}
 		}
-		else
-		{
-			ClapLog::globalLog(CLAP_LOG_WARNING, "Failed to create preset indexer");
-		}
+		else { ClapLog::globalLog(CLAP_LOG_WARNING, "Failed to create preset indexer"); }
 	}
 
 	return success;
@@ -275,14 +265,10 @@ auto ClapPresetDatabase::discoverPresets(const Location& location, std::set<Pres
 		return success;
 	};
 
-
 	// TODO: Use m_filetypeIndexerMap instead of preferredIndexer?
 
 	// Use preferred indexer if possible
-	if (preferredIndexer)
-	{
-		return getPresets(*preferredIndexer);
-	}
+	if (preferredIndexer) { return getPresets(*preferredIndexer); }
 
 	// Else, just try whichever indexer works
 	bool success = false;
@@ -293,10 +279,10 @@ auto ClapPresetDatabase::discoverPresets(const Location& location, std::set<Pres
 	return success;
 }
 
-auto ClapPresetDatabase::loadPresets(const Location& location, std::string_view file,
-	std::set<Preset>& presets) -> std::vector<const Preset*>
+auto ClapPresetDatabase::loadPresets(const Location& location, std::string_view file, std::set<Preset>& presets)
+	-> std::vector<const Preset*>
 {
-	const auto filePath = std::filesystem::u8path(file);
+	const auto filePath = std::filesystem::path(file);
 	if (std::error_code ec; !std::filesystem::is_regular_file(filePath, ec)) { return {}; }
 
 	auto getPresets = [&](Indexer& indexer) -> std::vector<const Preset*> {
@@ -309,10 +295,7 @@ auto ClapPresetDatabase::loadPresets(const Location& location, std::string_view 
 		for (auto& preset : *newPresets)
 		{
 			auto [it, added] = presets.emplace(std::move(preset));
-			if (added)
-			{
-				results.push_back(&*it);
-			}
+			if (added) { results.push_back(&*it); }
 			else
 			{
 				std::string msg = "The preset \"" + it->metadata().displayName + "\" was already loaded";
@@ -322,10 +305,7 @@ auto ClapPresetDatabase::loadPresets(const Location& location, std::string_view 
 		return results;
 	};
 
-	if (const auto preferredIndexer = getIndexerFor(location))
-	{
-		return getPresets(*preferredIndexer);
-	}
+	if (const auto preferredIndexer = getIndexerFor(location)) { return getPresets(*preferredIndexer); }
 
 	std::vector<const Preset*> results;
 	for (const auto& indexer : m_indexers)
@@ -359,39 +339,37 @@ auto ClapPresetDatabase::toClapLocation(std::string_view location, std::string& 
 	const char* locationOut = nullptr;
 	switch (base)
 	{
-		case PathUtil::Base::Internal:
-			locationKind = CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN;
-			//locationOut = nullptr;
-			break;
-		case PathUtil::Base::Absolute:
-			locationKind = CLAP_PRESET_DISCOVERY_LOCATION_FILE;
-			locationOut = location.data();
-			break;
-		default:
+	case PathUtil::Base::Internal:
+		locationKind = CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN;
+		// locationOut = nullptr;
+		break;
+	case PathUtil::Base::Absolute:
+		locationKind = CLAP_PRESET_DISCOVERY_LOCATION_FILE;
+		locationOut = location.data();
+		break;
+	default: {
+		locationKind = CLAP_PRESET_DISCOVERY_LOCATION_FILE;
+		if (auto temp = PathUtil::toAbsolute(location))
 		{
-			locationKind = CLAP_PRESET_DISCOVERY_LOCATION_FILE;
-			if (auto temp = PathUtil::toAbsolute(location))
-			{
-				ref = std::move(*temp);
-				locationOut = ref.c_str();
-			}
-			else
-			{
-				ClapLog::globalLog(CLAP_LOG_ERROR, "Failed to get absolute path for preset");
-				return std::nullopt;
-			}
-			break;
+			ref = std::move(*temp);
+			locationOut = ref.c_str();
 		}
+		else
+		{
+			ClapLog::globalLog(CLAP_LOG_ERROR, "Failed to get absolute path for preset");
+			return std::nullopt;
+		}
+		break;
+	}
 	}
 
-	return std::pair{ locationKind, locationOut };
+	return std::pair{locationKind, locationOut};
 }
 
 auto ClapPresetDatabase::fromClapLocation(const char* location) -> std::string
 {
-	return location
-		? PathUtil::toShortestRelative(std::string_view{location})
-		: std::string{PathUtil::basePrefix(PathUtil::Base::Internal)};
+	return location ? PathUtil::toShortestRelative(std::string_view{location})
+					: std::string{PathUtil::basePrefix(PathUtil::Base::Internal)};
 }
 
 auto ClapPresetDatabase::fromClapLocation([[maybe_unused]] clap_preset_discovery_location_kind kind,
@@ -399,10 +377,7 @@ auto ClapPresetDatabase::fromClapLocation([[maybe_unused]] clap_preset_discovery
 {
 	if (!location && !loadKey) { return std::nullopt; }
 
-	return PresetLoadData {
-		fromClapLocation(location),
-		loadKey ? loadKey : std::string{}
-	};
+	return PresetLoadData{fromClapLocation(location), loadKey ? loadKey : std::string{}};
 }
 
 auto ClapPresetDatabase::Indexer::create(const clap_preset_discovery_factory& factory, std::uint32_t index)
@@ -417,20 +392,10 @@ auto ClapPresetDatabase::Indexer::create(const clap_preset_discovery_factory& fa
 	return indexer->m_provider ? std::move(indexer) : nullptr;
 }
 
-ClapPresetDatabase::Indexer::Indexer(const clap_preset_discovery_factory& factory,
-	const clap_preset_discovery_provider_descriptor& descriptor)
-	: m_indexer {
-		CLAP_VERSION,
-		"LMMS",
-		"LMMS contributors",
-		"https://lmms.io/",
-		LMMS_VERSION,
-		this,
-		&clapDeclareFiletype,
-		&clapDeclareLocation,
-		&clapDeclareSoundpack,
-		&clapGetExtension
-	}
+ClapPresetDatabase::Indexer::Indexer(
+	const clap_preset_discovery_factory& factory, const clap_preset_discovery_provider_descriptor& descriptor)
+	: m_indexer{CLAP_VERSION, "LMMS", "LMMS contributors", "https://lmms.io/", LMMS_VERSION, this, &clapDeclareFiletype,
+		  &clapDeclareLocation, &clapDeclareSoundpack, &clapGetExtension}
 	, m_provider{factory.create(&factory, &m_indexer, descriptor.id), ProviderDeleter{}}
 {
 	if (!m_provider)
@@ -454,8 +419,7 @@ ClapPresetDatabase::Indexer::Indexer(const clap_preset_discovery_factory& factor
 	}
 }
 
-auto ClapPresetDatabase::Indexer::query(PresetMetadata::Flags flags)
-	-> std::optional<std::vector<Preset>>
+auto ClapPresetDatabase::Indexer::query(PresetMetadata::Flags flags) -> std::optional<std::vector<Preset>>
 {
 	auto receiver = MetadataReceiver{*this};
 	return receiver.query(flags);
@@ -477,12 +441,13 @@ auto ClapPresetDatabase::Indexer::filetypeSupported(const std::filesystem::path&
 
 	auto extView = std::string_view{extension};
 	extView.remove_prefix(1); // remove dot
-	return std::find_if(m_filetypes.begin(), m_filetypes.end(),
-		[&](const Filetype& f) { return f.extension == extView; }) != m_filetypes.end();
+	return std::find_if(m_filetypes.begin(), m_filetypes.end(), [&](const Filetype& f) {
+		return f.extension == extView;
+	}) != m_filetypes.end();
 }
 
-auto ClapPresetDatabase::Indexer::clapDeclareFiletype(const clap_preset_discovery_indexer* indexer,
-	const clap_preset_discovery_filetype* filetype) -> bool
+auto ClapPresetDatabase::Indexer::clapDeclareFiletype(
+	const clap_preset_discovery_indexer* indexer, const clap_preset_discovery_filetype* filetype) -> bool
 {
 	if (!indexer || !filetype)
 	{
@@ -506,8 +471,8 @@ auto ClapPresetDatabase::Indexer::clapDeclareFiletype(const clap_preset_discover
 	return true;
 }
 
-auto ClapPresetDatabase::Indexer::clapDeclareLocation(const clap_preset_discovery_indexer* indexer,
-	const clap_preset_discovery_location* location) -> bool
+auto ClapPresetDatabase::Indexer::clapDeclareLocation(
+	const clap_preset_discovery_indexer* indexer, const clap_preset_discovery_location* location) -> bool
 {
 	if (!indexer || !location)
 	{
@@ -524,82 +489,64 @@ auto ClapPresetDatabase::Indexer::clapDeclareLocation(const clap_preset_discover
 
 	switch (location->kind)
 	{
-		case CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN:
-			if (location->location)
-			{
-				ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING,
-					"Preset with PLUGIN location kind must have null location");
-				return false;
-			}
-			break;
-		case CLAP_PRESET_DISCOVERY_LOCATION_FILE:
+	case CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN:
+		if (location->location)
 		{
-			if (!location->location)
-			{
-				ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING,
-					"Preset with FILE location kind cannot have null location");
-				return false;
-			}
-
-			// A FILE location could be a directory or a file
-			if (std::error_code ec; !std::filesystem::exists(location->location, ec))
-			{
-				std::string msg = "Preset location \"" + std::string{location->location} + "\" does not exist";
-				ClapLog::globalLog(CLAP_LOG_WARNING, msg);
-				return false;
-			}
-			break;
-		}
-		default:
-			ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING, "Invalid preset location kind");
+			ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING, "Preset with PLUGIN location kind must have null location");
 			return false;
+		}
+		break;
+	case CLAP_PRESET_DISCOVERY_LOCATION_FILE: {
+		if (!location->location)
+		{
+			ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING, "Preset with FILE location kind cannot have null location");
+			return false;
+		}
+
+		// A FILE location could be a directory or a file
+		if (std::error_code ec; !std::filesystem::exists(location->location, ec))
+		{
+			std::string msg = "Preset location \"" + std::string{location->location} + "\" does not exist";
+			ClapLog::globalLog(CLAP_LOG_WARNING, msg);
+			return false;
+		}
+		break;
+	}
+	default:
+		ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING, "Invalid preset location kind");
+		return false;
 	}
 
-	auto loc = Location {
-		location->name ? location->name : std::string{},
-		fromClapLocation(location->location),
-		convertFlags(location->flags)
-	};
+	auto loc = Location{location->name ? location->name : std::string{}, fromClapLocation(location->location),
+		convertFlags(location->flags)};
 
 	self->m_locations.push_back(std::move(loc));
 
 	return true;
 }
 
-auto ClapPresetDatabase::Indexer::clapDeclareSoundpack(const clap_preset_discovery_indexer* indexer,
-	const clap_preset_discovery_soundpack* soundpack) -> bool
+auto ClapPresetDatabase::Indexer::clapDeclareSoundpack(
+	const clap_preset_discovery_indexer* indexer, const clap_preset_discovery_soundpack* soundpack) -> bool
 {
 	// TODO: Implement later?
 	return true;
 }
 
-auto ClapPresetDatabase::Indexer::clapGetExtension(const clap_preset_discovery_indexer* indexer,
-	const char* extensionId) -> const void*
+auto ClapPresetDatabase::Indexer::clapGetExtension(
+	const clap_preset_discovery_indexer* indexer, const char* extensionId) -> const void*
 {
 	// LMMS does not have any custom indexer extensions
 	return nullptr;
 }
 
 ClapPresetDatabase::MetadataReceiver::MetadataReceiver(const Indexer& indexer)
-	: m_receiver {
-		this,
-		&clapOnError,
-		&clapBeginPreset,
-		&clapAddPluginId,
-		&clapSetSoundpackId,
-		&clapSetFlags,
-		&clapAddCreator,
-		&clapSetDescription,
-		&clapSetTimestamps,
-		&clapAddFeature,
-		&clapAddExtraInfo
-	}
+	: m_receiver{this, &clapOnError, &clapBeginPreset, &clapAddPluginId, &clapSetSoundpackId, &clapSetFlags,
+		  &clapAddCreator, &clapSetDescription, &clapSetTimestamps, &clapAddFeature, &clapAddExtraInfo}
 	, m_indexer{&indexer}
 {
 }
 
-auto ClapPresetDatabase::MetadataReceiver::query(PresetMetadata::Flags flags)
-	-> std::optional<std::vector<Preset>>
+auto ClapPresetDatabase::MetadataReceiver::query(PresetMetadata::Flags flags) -> std::optional<std::vector<Preset>>
 {
 	const auto provider = m_indexer->provider();
 	if (!provider) { return std::nullopt; }
@@ -618,8 +565,8 @@ auto ClapPresetDatabase::MetadataReceiver::query(PresetMetadata::Flags flags)
 	return std::move(m_presets);
 }
 
-auto ClapPresetDatabase::MetadataReceiver::query(std::string_view file,
-	PresetMetadata::Flags flags) -> std::optional<std::vector<Preset>>
+auto ClapPresetDatabase::MetadataReceiver::query(std::string_view file, PresetMetadata::Flags flags)
+	-> std::optional<std::vector<Preset>>
 {
 	const auto provider = m_indexer->provider();
 	if (!provider) { return std::nullopt; }
@@ -720,8 +667,8 @@ void ClapPresetDatabase::MetadataReceiver::clapSetFlags(
 	auto& presets = self->m_presets;
 	if (presets.empty())
 	{
-		ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING,
-			"Preset discovery provider called set_flags() called before begin_preset()");
+		ClapLog::globalLog(
+			CLAP_LOG_PLUGIN_MISBEHAVING, "Preset discovery provider called set_flags() called before begin_preset()");
 		return;
 	}
 
@@ -738,8 +685,8 @@ void ClapPresetDatabase::MetadataReceiver::clapAddCreator(
 	auto& presets = self->m_presets;
 	if (presets.empty())
 	{
-		ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING,
-			"Preset discovery provider called add_creator() called before begin_preset()");
+		ClapLog::globalLog(
+			CLAP_LOG_PLUGIN_MISBEHAVING, "Preset discovery provider called add_creator() called before begin_preset()");
 		return;
 	}
 
@@ -764,8 +711,7 @@ void ClapPresetDatabase::MetadataReceiver::clapSetDescription(
 	presets.back().metadata().description = description;
 }
 
-void ClapPresetDatabase::MetadataReceiver::clapSetTimestamps(
-	const clap_preset_discovery_metadata_receiver* receiver,
+void ClapPresetDatabase::MetadataReceiver::clapSetTimestamps(const clap_preset_discovery_metadata_receiver* receiver,
 	clap_timestamp creationTime, clap_timestamp modificationTime)
 {
 	// [UNIMPLEMENTED]
@@ -781,8 +727,8 @@ void ClapPresetDatabase::MetadataReceiver::clapAddFeature(
 	auto& presets = self->m_presets;
 	if (presets.empty())
 	{
-		ClapLog::globalLog(CLAP_LOG_PLUGIN_MISBEHAVING,
-			"Preset discovery provider called add_feature() called before begin_preset()");
+		ClapLog::globalLog(
+			CLAP_LOG_PLUGIN_MISBEHAVING, "Preset discovery provider called add_feature() called before begin_preset()");
 		return;
 	}
 
@@ -795,13 +741,13 @@ void ClapPresetDatabase::MetadataReceiver::clapAddExtraInfo(
 	// [UNIMPLEMENTED]
 }
 
-auto ClapPresetDatabase::MetadataReceiver::from(
-	const clap_preset_discovery_metadata_receiver* receiver) -> MetadataReceiver*
+auto ClapPresetDatabase::MetadataReceiver::from(const clap_preset_discovery_metadata_receiver* receiver)
+	-> MetadataReceiver*
 {
 	if (!receiver || !receiver->receiver_data)
 	{
-		ClapLog::globalLog(CLAP_LOG_ERROR,
-			"Preset discovery metadata receiver's context pointer was invalidated by the plugin.");
+		ClapLog::globalLog(
+			CLAP_LOG_ERROR, "Preset discovery metadata receiver's context pointer was invalidated by the plugin.");
 		return nullptr;
 	}
 	return static_cast<MetadataReceiver*>(receiver->receiver_data);
