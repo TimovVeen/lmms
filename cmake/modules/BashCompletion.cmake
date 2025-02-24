@@ -52,25 +52,25 @@ macro(BASHCOMP_INSTALL SCRIPT_NAME)
 		# * CPack doesn't use CMAKE_INSTALL_PREFIX, so the original will be missing when packaging
 		#   and this step will be skipped
 		# * For non-root installs (e.g. ../target), this will silently fail
-		set(BASHCOMP_ORIG "${CMAKE_INSTALL_PREFIX}/${BASHCOMP_USER_PATH}/${CMAKE_PROJECT_NAME}")
-		set(BASHCOMP_LINK "${BASHCOMP_PKG_PATH}/${CMAKE_PROJECT_NAME}")
-
-		if(BASHCOMP_PKG_PATH)
-			# TODO: CMake 3.21 Use "file(COPY_FILE ...)"
-			install(CODE "
-				if(EXISTS \"${BASHCOMP_ORIG}\")
-					file(REMOVE \"${BASHCOMP_LINK}\")
-					execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-						\"${BASHCOMP_ORIG}\"
-						\"${BASHCOMP_LINK}\"
-						ERROR_QUIET
-						RESULT_VARIABLE result)
-					if(result EQUAL 0)
-						message(STATUS \"Bash completion-support has been installed to ${BASHCOMP_LINK}\")
-					endif()
-				endif()
-			")
-		endif()
+	# 	set(BASHCOMP_ORIG "${CMAKE_INSTALL_PREFIX}/${BASHCOMP_USER_PATH}/${CMAKE_PROJECT_NAME}")
+	# 	set(BASHCOMP_LINK "${BASHCOMP_PKG_PATH}/${CMAKE_PROJECT_NAME}")
+	#
+	# 	if(BASHCOMP_PKG_PATH)
+	# 		# TODO: CMake 3.21 Use "file(COPY_FILE ...)"
+	# 		install(CODE "
+	# 			if(EXISTS \"${BASHCOMP_ORIG}\")
+	# 				file(REMOVE \"${BASHCOMP_LINK}\")
+	# 				execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+	# 					\"${BASHCOMP_ORIG}\"
+	# 					\"${BASHCOMP_LINK}\"
+	# 					ERROR_QUIET
+	# 					RESULT_VARIABLE result)
+	# 				if(result EQUAL 0)
+	# 					message(STATUS \"Bash completion-support has been installed to ${BASHCOMP_LINK}\")
+	# 				endif()
+	# 			endif()
+	# 		")
+	# 	endif()
 	endif()
 endmacro()
 
